@@ -12,6 +12,7 @@ const BASE_URL = "https://mail-track.onrender.com";
 // In-memory storage for emails and links (replace with a database in production)
 const emails = new Map();
 const links = new Map();
+const campaigns = new Map();
 
 // Middleware
 app.use(express.json());
@@ -53,18 +54,6 @@ app.get('/link/:linkId', (req, res) => {
   }
 });
 
-// Endpoint to check email status
-app.get('/check/:emailId', (req, res) => {
-  const emailId = req.params.emailId;
-  const emailData = emails.get(emailId);
-  if (emailData) {
-    const linkData = emailData.links.map(linkId => links.get(linkId));
-    res.json({...emailData, links: linkData});
-  } else {
-    res.json({ error: 'Email not found' });
-  }
-});
-
 // Function to replace links with tracked versions
 function replaceLinks(content, emailId) {
   const $ = cheerio.load(content);
@@ -84,14 +73,11 @@ function replaceLinks(content, emailId) {
   return { content: $.html(), links: emailLinks };
 }
 
-// Endpoint to send a tracked email
-app.post('/send-email', async (req, res) => {
-  console.log('Received request to send email');
-  const { to, subject, content } = req.body;
-  const emailId = uuid.v4();
-
-  // Replace links and get the updated content
-  const { content: trackedContent, links: emailLinks } = replaceLinks(content, emailId);
+// Endpoint to send a tracked email campaign
+app.post('/send-campaign', async (req, res) => {
+  console.log('Received request to send email campaign');
+  const { recipients, subject, content } = req.body;
+  const campaignId = uuid.v4();
 
   // Create a nodemailer transporter (configure with your email service)
   let transporter = nodemailer.createTransport({
@@ -104,39 +90,67 @@ app.post('/send-email', async (req, res) => {
     }
   });
 
-  // Generate HTML content with tracking pixel
-  const htmlContent = `
-    ${trackedContent}
-    <img src="${BASE_URL}/track/${emailId}" style="display:none;" alt="">
-  `;
+  const campaignResults = [];
 
-  // Send mail with defined transport object
-  try {
-    console.log('Attempting to send email');
-    let info = await transporter.sendMail({
-      from: '"BurningHat" <burninghat20@gmail.com>',
-      to: to,
-      subject: subject,
-      html: htmlContent
-    });
+  for (const to of recipients) {
+    const emailId = uuid.v4();
+    
+    // Replace links and get the updated content
+    const { content: trackedContent, links: emailLinks } = replaceLinks(content, emailId);
 
-    console.log('Message sent: %s', info.messageId);
-    const emailData = { id: emailId, to, subject, content: trackedContent, sentAt: new Date(), opened: false, links: emailLinks };
-    emails.set(emailId, emailData);
-    res.json({ success: true, emailId, messageId: info.messageId });
-  } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ success: false, error: error.message });
+    // Generate HTML content with tracking pixel
+    const htmlContent = `
+      ${trackedContent}
+      <img src="${BASE_URL}/track/${emailId}" style="display:none;" alt="">
+    `;
+
+    // Send mail with defined transport object
+    try {
+      console.log(`Attempting to send email to ${to}`);
+      let info = await transporter.sendMail({
+        from: '"burninghat" <burninghat20@gmail.com>',
+        to: to,
+        subject: subject,
+        html: htmlContent
+      });
+
+      console.log(`Message sent to ${to}: ${info.messageId}`);
+      const emailData = { id: emailId, to, subject, content: trackedContent, sentAt: new Date(), opened: false, links: emailLinks, campaignId };
+      emails.set(emailId, emailData);
+      campaignResults.push({ success: true, to, emailId, messageId: info.messageId });
+    } catch (error) {
+      console.error(`Error sending email to ${to}:`, error);
+      campaignResults.push({ success: false, to, error: error.message });
+    }
   }
+
+  campaigns.set(campaignId, {
+    id: campaignId,
+    subject,
+    content,
+    sentAt: new Date(),
+    recipients: recipients.length,
+    results: campaignResults
+  });
+
+  res.json({ success: true, campaignId, results: campaignResults });
 });
 
-// Endpoint to get all sent emails
-app.get('/emails', (req, res) => {
-  const emailsWithLinkData = Array.from(emails.values()).map(email => ({
-    ...email,
-    links: email.links.map(linkId => links.get(linkId))
-  }));
-  res.json(emailsWithLinkData);
+// Endpoint to get all campaigns
+app.get('/campaigns', (req, res) => {
+  res.json(Array.from(campaigns.values()));
+});
+
+// Endpoint to get campaign details
+app.get('/campaign/:campaignId', (req, res) => {
+  const campaignId = req.params.campaignId;
+  const campaign = campaigns.get(campaignId);
+  if (campaign) {
+    const campaignEmails = Array.from(emails.values()).filter(email => email.campaignId === campaignId);
+    res.json({ ...campaign, emails: campaignEmails });
+  } else {
+    res.status(404).json({ error: 'Campaign not found' });
+  }
 });
 
 // Serve the HTML file
