@@ -3,60 +3,155 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Email Tracker</title>
+    <title>Email Tracker Dashboard</title>
     <link
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
     />
-    <!-- Include Quill stylesheet -->
     <link
       href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
       rel="stylesheet"
     />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+      rel="stylesheet"
+    />
     <style>
-      #editor {
+      .ql-container {
         height: 200px;
       }
     </style>
   </head>
-  <body class="bg-gray-100">
-    <div class="container mx-auto p-4">
-      <h1 class="text-3xl font-bold mb-4">Email Tracker</h1>
-      <form id="emailForm" class="mb-8">
-        <input
-          type="email"
-          id="to"
-          placeholder="Recipient Email"
-          required
-          class="w-full p-2 mb-2 border rounded"
-        />
-        <input
-          type="text"
-          id="subject"
-          placeholder="Subject"
-          required
-          class="w-full p-2 mb-2 border rounded"
-        />
-        <div id="editor" class="mb-2"></div>
-        <button
-          type="submit"
-          class="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Send Email
-        </button>
-      </form>
-      <div id="result" class="mb-4"></div>
-      <h2 class="text-2xl font-bold mb-2">Sent Emails</h2>
-      <div id="emailList" class="space-y-2"></div>
+  <body class="bg-gray-100 font-sans">
+    <div class="flex h-screen">
+      <!-- Sidebar -->
+      <div class="bg-gray-800 text-white w-64 flex-shrink-0">
+        <div class="p-4">
+          <h1 class="text-2xl font-bold">Email Tracker</h1>
+        </div>
+        <nav class="mt-8">
+          <a href="#" class="block py-2 px-4 bg-gray-900" id="compose-nav">
+            <i class="fas fa-pen mr-2"></i> Compose
+          </a>
+          <a href="#" class="block py-2 px-4 hover:bg-gray-700" id="sent-nav">
+            <i class="fas fa-paper-plane mr-2"></i> Sent Emails
+          </a>
+        </nav>
+      </div>
+
+      <!-- Main content -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top bar -->
+        <header class="bg-white shadow-sm">
+          <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <h2
+              class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate"
+              id="page-title"
+            >
+              Compose Email
+            </h2>
+          </div>
+        </header>
+
+        <!-- Main content area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+          <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Compose Email Form -->
+            <div
+              id="compose-section"
+              class="bg-white shadow overflow-hidden sm:rounded-lg"
+            >
+              <div class="px-4 py-5 sm:p-6">
+                <form id="emailForm" class="space-y-4">
+                  <div>
+                    <label
+                      for="to"
+                      class="block text-sm font-medium text-gray-700"
+                      >To</label
+                    >
+                    <input
+                      type="email"
+                      id="to"
+                      required
+                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="subject"
+                      class="block text-sm font-medium text-gray-700"
+                      >Subject</label
+                    >
+                    <input
+                      type="text"
+                      id="subject"
+                      required
+                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="editor"
+                      class="block text-sm font-medium text-gray-700"
+                      >Content</label
+                    >
+                    <div id="editor"></div>
+                  </div>
+                  <div>
+                    <button
+                      type="submit"
+                      class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Send Email
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Sent Emails List -->
+            <div
+              id="sent-section"
+              class="hidden bg-white shadow overflow-hidden sm:rounded-lg mt-6"
+            >
+              <div class="px-4 py-5 sm:p-6">
+                <div id="emailList" class="space-y-4"></div>
+              </div>
+            </div>
+
+            <!-- Result message -->
+            <div id="result" class="mt-6"></div>
+          </div>
+        </main>
+      </div>
     </div>
 
-    <!-- Include the Quill library -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script>
       // Initialize Quill editor
       var quill = new Quill("#editor", {
         theme: "snow",
       });
+
+      // Navigation
+      document
+        .getElementById("compose-nav")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+          document.getElementById("compose-section").classList.remove("hidden");
+          document.getElementById("sent-section").classList.add("hidden");
+          document.getElementById("page-title").textContent = "Compose Email";
+        });
+
+      document
+        .getElementById("sent-nav")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+          document.getElementById("compose-section").classList.add("hidden");
+          document.getElementById("sent-section").classList.remove("hidden");
+          document.getElementById("page-title").textContent = "Sent Emails";
+          fetchEmails();
+        });
 
       document
         .getElementById("emailForm")
@@ -75,7 +170,8 @@
             const data = await response.json();
             if (data.success) {
               document.getElementById("result").innerHTML = `
-                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
+                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded" role="alert">
+                            <p class="font-bold">Success</p>
                             <p>Email sent successfully. Email ID: ${data.emailId}</p>
                         </div>`;
               fetchEmails();
@@ -85,14 +181,16 @@
               quill.root.innerHTML = "";
             } else {
               document.getElementById("result").innerHTML = `
-                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded" role="alert">
+                            <p class="font-bold">Error</p>
                             <p>Failed to send email: ${data.error}</p>
                         </div>`;
             }
           } catch (error) {
             console.error("Error:", error);
             document.getElementById("result").innerHTML = `
-                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded" role="alert">
+                        <p class="font-bold">Error</p>
                         <p>An error occurred while sending the email.</p>
                     </div>`;
           }
@@ -106,49 +204,97 @@
           emailList.innerHTML = emails
             .map(
               (email) => `
-                    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                        <p><strong>To:</strong> ${email.to}</p>
-                        <p><strong>Subject:</strong> ${email.subject}</p>
-                        <p><strong>Sent At:</strong> ${new Date(
-                          email.sentAt
-                        ).toLocaleString()}</p>
-                        <p><strong>Status:</strong> <span id="status-${
-                          email.id
-                        }">${email.opened ? "Opened" : "Not Opened"}</span></p>
-                        <p id="opened-at-${email.id}">${
+                    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-4">
+                        <div class="px-4 py-5 sm:px-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                ${email.subject}
+                            </h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                                Sent to: ${email.to}
+                            </p>
+                        </div>
+                        <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+                            <dl class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Sent At
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        ${new Date(
+                                          email.sentAt
+                                        ).toLocaleString()}
+                                    </dd>
+                                </div>
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Status
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <span id="status-${
+                                          email.id
+                                        }" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                 email.opened
-                  ? `<strong>Opened At:</strong> ${new Date(
-                      email.openedAt
-                    ).toLocaleString()}`
-                  : ""
-              }</p>
-                        <div class="mt-2">
-                            <strong>Links:</strong>
-                            <ul class="list-disc pl-5">
-                                ${email.links
-                                  .map(
-                                    (link) => `
-                                    <li>
-                                        <a href="${
-                                          link.originalUrl
-                                        }" target="_blank">${
-                                      link.originalUrl
-                                    }</a>
-                                        <span id="link-status-${link.id}">${
-                                      link.clicked ? "Clicked" : "Not Clicked"
-                                    }</span>
+                  ? "bg-green-100 text-green-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }">
+                                            ${
+                                              email.opened
+                                                ? "Opened"
+                                                : "Not Opened"
+                                            }
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Opened At
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900" id="opened-at-${
+                                      email.id
+                                    }">
                                         ${
-                                          link.clicked
-                                            ? `<span>(Clicked at: ${new Date(
-                                                link.clickedAt
-                                              ).toLocaleString()})</span>`
-                                            : ""
+                                          email.opened
+                                            ? new Date(
+                                                email.openedAt
+                                              ).toLocaleString()
+                                            : "N/A"
                                         }
-                                    </li>
-                                `
-                                  )
-                                  .join("")}
-                            </ul>
+                                    </dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Links
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <ul class="border border-gray-200 rounded-md divide-y divide-gray-200">
+                                            ${email.links
+                                              .map(
+                                                (link) => `
+                                                <li class="pl-3 pr-4 py-3 flex items-center justify-between text-sm">
+                                                    <div class="w-0 flex-1 flex items-center">
+                                                        <span class="ml-2 flex-1 w-0 truncate">
+                                                            ${link.originalUrl}
+                                                        </span>
+                                                    </div>
+                                                    <div class="ml-4 flex-shrink-0">
+                                                        <span id="link-status-${
+                                                          link.id
+                                                        }" class="font-medium text-indigo-600 hover:text-indigo-500">
+                                                            ${
+                                                              link.clicked
+                                                                ? "Clicked"
+                                                                : "Not Clicked"
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </li>
+                                            `
+                                              )
+                                              .join("")}
+                                        </ul>
+                                    </dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
                 `
@@ -172,10 +318,15 @@
               statusElement.textContent = email.opened
                 ? "Opened"
                 : "Not Opened";
+              statusElement.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                email.opened
+                  ? "bg-green-100 text-green-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }`;
               if (email.opened && openedAtElement) {
-                openedAtElement.innerHTML = `<strong>Opened At:</strong> ${new Date(
+                openedAtElement.textContent = new Date(
                   email.openedAt
-                ).toLocaleString()}`;
+                ).toLocaleString();
               }
             }
             email.links.forEach((link) => {
@@ -186,11 +337,11 @@
                 linkStatusElement.textContent = link.clicked
                   ? "Clicked"
                   : "Not Clicked";
-                if (link.clicked) {
-                  linkStatusElement.nextElementSibling.textContent = `(Clicked at: ${new Date(
-                    link.clickedAt
-                  ).toLocaleString()})`;
-                }
+                linkStatusElement.className = `font-medium ${
+                  link.clicked
+                    ? "text-green-600 hover:text-green-500"
+                    : "text-indigo-600 hover:text-indigo-500"
+                }`;
               }
             });
           });
@@ -198,9 +349,6 @@
           console.error("Error checking email status:", error);
         }
       }
-
-      // Fetch emails on page load
-      fetchEmails();
 
       // Check email status every 5 seconds
       setInterval(checkEmailStatus, 5000);
