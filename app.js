@@ -2,14 +2,16 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const uuid = require('uuid');
 const path = require('path');
+const cheerio = require('cheerio');
 const app = express();
 const port = 3000;
 
 // Configure this to your server's public URL
 const BASE_URL = "https://mail-track.onrender.com";
 
-// In-memory storage for emails (replace with a database in production)
+// In-memory storage for emails and links (replace with a database in production)
 const emails = new Map();
+const links = new Map();
 
 // Middleware
 app.use(express.json());
@@ -36,18 +38,60 @@ app.get('/track/:emailId', (req, res) => {
   res.end(buffer);
 });
 
+// Endpoint to track link clicks
+app.get('/link/:linkId', (req, res) => {
+  const linkId = req.params.linkId;
+  if (links.has(linkId)) {
+    const linkData = links.get(linkId);
+    linkData.clickedAt = new Date();
+    linkData.clicked = true;
+    links.set(linkId, linkData);
+    console.log(`Link ${linkId} clicked at ${linkData.clickedAt}`);
+    res.redirect(linkData.originalUrl);
+  } else {
+    res.status(404).send('Link not found');
+  }
+});
+
 // Endpoint to check email status
 app.get('/check/:emailId', (req, res) => {
   const emailId = req.params.emailId;
   const emailData = emails.get(emailId);
-  res.json(emailData || { error: 'Email not found' });
+  if (emailData) {
+    const linkData = emailData.links.map(linkId => links.get(linkId));
+    res.json({...emailData, links: linkData});
+  } else {
+    res.json({ error: 'Email not found' });
+  }
 });
+
+// Function to replace links with tracked versions
+function replaceLinks(content, emailId) {
+  const $ = cheerio.load(content);
+  const emailLinks = [];
+
+  $('a').each((index, element) => {
+    const originalUrl = $(element).attr('href');
+    const linkId = uuid.v4();
+    const trackedUrl = `${BASE_URL}/link/${linkId}`;
+    
+    $(element).attr('href', trackedUrl);
+    
+    links.set(linkId, { id: linkId, originalUrl, emailId, clicked: false });
+    emailLinks.push(linkId);
+  });
+
+  return { content: $.html(), links: emailLinks };
+}
 
 // Endpoint to send a tracked email
 app.post('/send-email', async (req, res) => {
   console.log('Received request to send email');
   const { to, subject, content } = req.body;
   const emailId = uuid.v4();
+
+  // Replace links and get the updated content
+  const { content: trackedContent, links: emailLinks } = replaceLinks(content, emailId);
 
   // Create a nodemailer transporter (configure with your email service)
   let transporter = nodemailer.createTransport({
@@ -62,7 +106,7 @@ app.post('/send-email', async (req, res) => {
 
   // Generate HTML content with tracking pixel
   const htmlContent = `
-    ${content}
+    ${trackedContent}
     <img src="${BASE_URL}/track/${emailId}" style="display:none;" alt="">
   `;
 
@@ -77,7 +121,7 @@ app.post('/send-email', async (req, res) => {
     });
 
     console.log('Message sent: %s', info.messageId);
-    const emailData = { id: emailId, to, subject, content, sentAt: new Date(), opened: false };
+    const emailData = { id: emailId, to, subject, content: trackedContent, sentAt: new Date(), opened: false, links: emailLinks };
     emails.set(emailId, emailData);
     res.json({ success: true, emailId, messageId: info.messageId });
   } catch (error) {
@@ -88,7 +132,11 @@ app.post('/send-email', async (req, res) => {
 
 // Endpoint to get all sent emails
 app.get('/emails', (req, res) => {
-  res.json(Array.from(emails.values()));
+  const emailsWithLinkData = Array.from(emails.values()).map(email => ({
+    ...email,
+    links: email.links.map(linkId => links.get(linkId))
+  }));
+  res.json(emailsWithLinkData);
 });
 
 // Serve the HTML file

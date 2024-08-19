@@ -122,6 +122,34 @@
                     ).toLocaleString()}`
                   : ""
               }</p>
+                        <div class="mt-2">
+                            <strong>Links:</strong>
+                            <ul class="list-disc pl-5">
+                                ${email.links
+                                  .map(
+                                    (link) => `
+                                    <li>
+                                        <a href="${
+                                          link.originalUrl
+                                        }" target="_blank">${
+                                      link.originalUrl
+                                    }</a>
+                                        <span id="link-status-${link.id}">${
+                                      link.clicked ? "Clicked" : "Not Clicked"
+                                    }</span>
+                                        ${
+                                          link.clicked
+                                            ? `<span>(Clicked at: ${new Date(
+                                                link.clickedAt
+                                              ).toLocaleString()})</span>`
+                                            : ""
+                                        }
+                                    </li>
+                                `
+                                  )
+                                  .join("")}
+                            </ul>
+                        </div>
                     </div>
                 `
             )
@@ -150,6 +178,21 @@
                 ).toLocaleString()}`;
               }
             }
+            email.links.forEach((link) => {
+              const linkStatusElement = document.getElementById(
+                `link-status-${link.id}`
+              );
+              if (linkStatusElement) {
+                linkStatusElement.textContent = link.clicked
+                  ? "Clicked"
+                  : "Not Clicked";
+                if (link.clicked) {
+                  linkStatusElement.nextElementSibling.textContent = `(Clicked at: ${new Date(
+                    link.clickedAt
+                  ).toLocaleString()})`;
+                }
+              }
+            });
           });
         } catch (error) {
           console.error("Error checking email status:", error);
