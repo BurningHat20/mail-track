@@ -23,10 +23,12 @@ app.get('/track/:emailId', (req, res) => {
   const emailId = req.params.emailId;
   if (emails.has(emailId)) {
     const emailData = emails.get(emailId);
-    emailData.openedAt = new Date();
-    emailData.opened = true;
-    emails.set(emailId, emailData);
-    console.log(`Email ${emailId} opened at ${emailData.openedAt}`);
+    if (!emailData.opened) {
+      emailData.openedAt = new Date();
+      emailData.opened = true;
+      emails.set(emailId, emailData);
+      console.log(`Email ${emailId} opened at ${emailData.openedAt}`);
+    }
   }
   
   // Send a 1x1 transparent GIF
@@ -44,10 +46,12 @@ app.get('/link/:linkId', (req, res) => {
   const linkId = req.params.linkId;
   if (links.has(linkId)) {
     const linkData = links.get(linkId);
-    linkData.clickedAt = new Date();
-    linkData.clicked = true;
-    links.set(linkId, linkData);
-    console.log(`Link ${linkId} clicked at ${linkData.clickedAt}`);
+    if (!linkData.clicked) {
+      linkData.clickedAt = new Date();
+      linkData.clicked = true;
+      links.set(linkId, linkData);
+      console.log(`Link ${linkId} clicked at ${linkData.clickedAt}`);
+    }
     res.redirect(linkData.originalUrl);
   } else {
     res.status(404).send('Link not found');
@@ -108,7 +112,7 @@ app.post('/send-campaign', async (req, res) => {
     try {
       console.log(`Attempting to send email to ${to}`);
       let info = await transporter.sendMail({
-        from: '"burninghat" <burninghat20@gmail.com>',
+        from: '"Burninghat" <burninghat20@gmail.com>',
         to: to,
         subject: subject,
         html: htmlContent
@@ -138,7 +142,22 @@ app.post('/send-campaign', async (req, res) => {
 
 // Endpoint to get all campaigns
 app.get('/campaigns', (req, res) => {
-  res.json(Array.from(campaigns.values()));
+  const campaignsData = Array.from(campaigns.values()).map(campaign => {
+    const campaignEmails = Array.from(emails.values()).filter(email => email.campaignId === campaign.id);
+    const openRate = campaignEmails.filter(email => email.opened).length / campaignEmails.length;
+    const clickRate = campaignEmails.reduce((acc, email) => {
+      const clickedLinks = email.links.filter(linkId => links.get(linkId).clicked);
+      return acc + (clickedLinks.length > 0 ? 1 : 0);
+    }, 0) / campaignEmails.length;
+
+    return {
+      ...campaign,
+      openRate,
+      clickRate
+    };
+  });
+
+  res.json(campaignsData);
 });
 
 // Endpoint to get campaign details
@@ -146,7 +165,13 @@ app.get('/campaign/:campaignId', (req, res) => {
   const campaignId = req.params.campaignId;
   const campaign = campaigns.get(campaignId);
   if (campaign) {
-    const campaignEmails = Array.from(emails.values()).filter(email => email.campaignId === campaignId);
+    const campaignEmails = Array.from(emails.values())
+      .filter(email => email.campaignId === campaignId)
+      .map(email => ({
+        ...email,
+        links: email.links.map(linkId => links.get(linkId))
+      }));
+
     res.json({ ...campaign, emails: campaignEmails });
   } else {
     res.status(404).json({ error: 'Campaign not found' });
