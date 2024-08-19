@@ -6,7 +6,7 @@ const app = express();
 const port = 3000;
 
 // Configure this to your server's public URL
-const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`;
+const BASE_URL = process.env.BASE_URL || `https://mail-track.onrender.com`;
 
 // In-memory storage for emails (replace with a database in production)
 const emails = new Map();
