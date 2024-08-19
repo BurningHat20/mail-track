@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email Tracker</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+      <h1 class="text-3xl font-bold mb-4">Email Tracker</h1>
+      <form id="emailForm" class="mb-8">
+        <input
+          type="email"
+          id="to"
+          placeholder="Recipient Email"
+          required
+          class="w-full p-2 mb-2 border rounded"
+        />
+        <input
+          type="text"
+          id="subject"
+          placeholder="Subject"
+          required
+          class="w-full p-2 mb-2 border rounded"
+        />
+        <textarea
+          id="text"
+          placeholder="Email Content"
+          required
+          rows="4"
+          class="w-full p-2 mb-2 border rounded"
+        ></textarea>
+        <button
+          type="submit"
+          class="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Send Email
+        </button>
+      </form>
+      <div id="result" class="mb-4"></div>
+      <h2 class="text-2xl font-bold mb-2">Sent Emails</h2>
+      <div id="emailList" class="space-y-2"></div>
+    </div>
+
+    <script>
+      document
+        .getElementById("emailForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const to = document.getElementById("to").value;
+          const subject = document.getElementById("subject").value;
+          const text = document.getElementById("text").value;
+
+          try {
+            const response = await fetch("/send-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ to, subject, text }),
+            });
+            const data = await response.json();
+            if (data.success) {
+              document.getElementById("result").innerHTML = `
+                        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
+                            <p>Email sent successfully. Email ID: ${data.emailId}</p>
+                        </div>`;
+              fetchEmails();
+            } else {
+              document.getElementById("result").innerHTML = `
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                            <p>Failed to send email: ${data.error}</p>
+                        </div>`;
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            document.getElementById("result").innerHTML = `
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                        <p>An error occurred while sending the email.</p>
+                    </div>`;
+          }
+        });
+
+      async function fetchEmails() {
+        try {
+          const response = await fetch("/emails");
+          const emails = await response.json();
+          const emailList = document.getElementById("emailList");
+          emailList.innerHTML = emails
+            .map(
+              (email) => `
+                    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+                        <p><strong>To:</strong> ${email.to}</p>
+                        <p><strong>Subject:</strong> ${email.subject}</p>
+                        <p><strong>Sent At:</strong> ${new Date(
+                          email.sentAt
+                        ).toLocaleString()}</p>
+                        <p><strong>Status:</strong> <span id="status-${
+                          email.id
+                        }">${email.opened ? "Opened" : "Not Opened"}</span></p>
+                        <p id="opened-at-${email.id}">${
+                email.opened
+                  ? `<strong>Opened At:</strong> ${new Date(
+                      email.openedAt
+                    ).toLocaleString()}`
+                  : ""
+              }</p>
+                    </div>
+                `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error fetching emails:", error);
+        }
+      }
+
+      async function checkEmailStatus() {
+        try {
+          const response = await fetch("/emails");
+          const emails = await response.json();
+          emails.forEach((email) => {
+            const statusElement = document.getElementById(`status-${email.id}`);
+            const openedAtElement = document.getElementById(
+              `opened-at-${email.id}`
+            );
+            if (statusElement) {
+              statusElement.textContent = email.opened
+                ? "Opened"
+                : "Not Opened";
+              if (email.opened && openedAtElement) {
+                openedAtElement.innerHTML = `<strong>Opened At:</strong> ${new Date(
+                  email.openedAt
+                ).toLocaleString()}`;
+              }
+            }
+          });
+        } catch (error) {
+          console.error("Error checking email status:", error);
+        }
+      }
+
+      // Fetch emails on page load
+      fetchEmails();
+
+      // Check email status every 5 seconds
+      setInterval(checkEmailStatus, 5000);
+    </script>
+  </body>
+</html>
